@@ -33,6 +33,24 @@
           value: "{{ ocppassword }}"
       register: result
 
+    - name: Update parameters file - rhsmUsernameOrOrgId
+      json_modify:
+        data: "{{ result.result }}"
+        pointer: "/parameters/rhsmUsernameOrOrgId"
+        action: update
+        update:
+          value: "{{ rhUser }}"
+      register: result
+
+    - name: Update parameters file - rhsmPasswordOrActivationKey
+      json_modify:
+        data: "{{ result.result }}"
+        pointer: "/parameters/rhsmrhsmPasswordOrActivationKeyPoolId"
+        action: update
+        update:
+          value: "{{ rhPass }}"
+      register: result
+
     - name: Update parameters file - rhsmPoolId
       json_modify:
         data: "{{ result.result }}"
@@ -40,6 +58,15 @@
         action: update
         update:
           value: "{{ rhpoolID }}"
+      register: result
+
+    - name: Update parameters file - rhsmBrokerPoolId
+      json_modify:
+        data: "{{ result.result }}"
+        pointer: "/parameters/rhsmBrokerPoolId"
+        action: update
+        update:
+          value: "{{ rhGrouppoolID }}"
       register: result
 
     - name: Update parameters file - sshPublicKey
