@@ -1,0 +1,98 @@
+---
+- name: Run local
+  vars:
+    azure:
+      client_id: '{{ lookup("env", "AZURE_CLIENT_ID") }}'
+      secret: '{{ lookup("env", "AZURE_SECRET") }}'
+      tenant: '{{ lookup("env", "AZURE_TENANT") }}'
+    template: "{{ lookup('file','azuredeploy.parameters.json')|from_json }}"
+  hosts: 127.0.0.1
+  connection: local
+  tasks:
+    - name: Login to Azure CLI
+      command: az login --service-principal -u {{ azure.client_id }} -p {{ azure.secret }} --tenant {{ azure.tenant }}
+
+    - name: Use Azure CLI to retrieve VM information
+      command: az vm list -g xvoscluster-lowbrow-rg
+
+    - name: Update parameters file - adminUsername
+      json_modify:
+        data: "{{ template }}"
+        pointer: "/parameters/adminUsername"
+        action: update
+        update:
+          value: "{{ ocpadmin }}"
+      register: result
+
+    - name: Update parameters file - openshiftPassword
+      json_modify:
+        data: "{{ result.result }}"
+        pointer: "/parameters/openshiftPassword"
+        action: update
+        update:
+          value: "{{ ocppassword }}"
+      register: result
+
+    - name: Update parameters file - rhsmPoolId
+      json_modify:
+        data: "{{ result.result }}"
+        pointer: "/parameters/rhsmPoolId"
+        action: update
+        update:
+          value: "{{ rhpoolID }}"
+      register: result
+
+    - name: Update parameters file - sshPublicKey
+      json_modify:
+        data: "{{ result.result }}"
+        pointer: "/parameters/sshPublicKey"
+        action: update
+        update:
+          value: "{{ pubKey }}"
+      register: result
+
+    - name: Update parameters file - keyVaultResourceGroup
+      json_modify:
+        data: "{{ result.result }}"
+        pointer: "/parameters/keyVaultResourceGroup"
+        action: update
+        update:
+          value: "{{ resGroup }}"
+      register: result
+
+    - name: Update parameters file - keyVaultName
+      json_modify:
+        data: "{{ result.result }}"
+        pointer: "/parameters/keyVaultName"
+        action: update
+        update:
+          value: "{{ vaultName }}"
+      register: result
+
+    - name: Update parameters file - aadClientId
+      json_modify:
+        data: "{{ result.result }}"
+        pointer: "/parameters/aadClientId"
+        action: update
+        update:
+          value: "{{ azure.client_id }}"
+      register: result
+
+    - name: Update parameters file - aadClientSecret
+      json_modify:
+        data: "{{ result.result }}"
+        pointer: "/parameters/aadClientSecret"
+        action: update
+        update:
+          value: "{{ azure.secret }}"
+      register: result
+
+    - name: Show results
+      debug:
+        var: result.result
+
+    - name: Save parameters file
+      copy: content="{{ result.result }}" dest=azuredeploy.parameters.final
+
+    - name: Build Cluster
+      command: az group deployment create --name ocpdeployment --template-file azuredeploy.json --parameters @azuredeploy.parameters.final --resource-group xvoscluster-lowbrow-rg --no-wait
